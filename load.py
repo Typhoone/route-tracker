@@ -11,6 +11,7 @@ from threading import Lock, Thread
 import time
 import math
 from functools import partial
+import time
 
 this = sys.modules[__name__]  # For holding module globals
 this.version = 'v0.0.1'
@@ -50,6 +51,20 @@ def loadLoops(generate = False):
 		this.loadingLable.grid(row = 1, column = 0)
 		this.shouldFetchLoop = True
 
+def timeAgoFromListing(listing):
+	now = round(time.time())
+	listingTime = listing['collected_at']
+	timeDiff = now - listingTime
+	
+	if timeDiff < 60:
+		return f"{timeDiff}sec "
+	elif timeDiff < 3600:
+		return f"{round(timeDiff/60)}min"
+	elif timeDiff < 216000:
+		return f"{round(timeDiff/60/60)}hrs"
+	else:
+		return f"{round(timeDiff/60/60/24)}day"
+
 def showLoops():
 	logger.debug("Showing Loops")
 	numToShow = 5
@@ -67,8 +82,7 @@ def showLoops():
 		b1 = loop['twoSellListing']['sell_price'] - loop['oneBuyListing']['buy_price']
 		b2 = loop['oneSellListing']['sell_price'] - loop['twoBuyListing']['buy_price']
 		prof = b1 + b2
-		b1Str = str(b1).rjust(7)
-		b2Str = str(b2).rjust(7)
+
 		profStr = str(prof).rjust(7)
 
 		station1Type = loop['oneStation']['type_id']
@@ -88,8 +102,10 @@ def showLoops():
 		sup2 = str(loop['twoBuyListing']['supply']).ljust(7)
 
 		loopDist = (str(round(loop['distance'],2)) + " ly").rjust(12)
-		
-		line1Text = f'{indx+1}: {b1Str}Cr + {b2Str}Cr = {profStr}Cr {distStr}ly'
+
+		listing1TimeAgo = timeAgoFromListing(loop['oneBuyListing'])
+		listing2TimeAgo = timeAgoFromListing(loop['twoBuyListing'])
+		line1Text = f'{indx+1}: {listing1TimeAgo} ⮀  {listing2TimeAgo} {profStr}Cr {distStr}ly'
 		infoLine1 = tk.Label(this.frame, text=line1Text)
 		infoLine1.grid(row = rowNum, column = 0)
 
@@ -165,7 +181,6 @@ def showSingleLoop(indx):
 	loopOneStationLine2.grid(row = 2, column = 0)
 
 
-    # print()
 	loopTwoStationLine1Text = f'{(twoSystemName + ": " + twoStationName).ljust(30)} {(b2 + "Cr").rjust(10)} {station2TypeIcon}'
 	loopTwoStationLine2Text = f'{twoCommodityCategory.ljust(20)} {twoCommodityName.ljust(20)} x {sup2.rjust(6)}'
 
@@ -174,7 +189,6 @@ def showSingleLoop(indx):
 
 	loopTwoStationLine2 = tk.Label(this.frame, text=loopTwoStationLine2Text)
 	loopTwoStationLine2.grid(row = 5, column = 0)
-
 
 def showPage(page, extData = "null"):
 	logger.debug("Show Page: " + page)
