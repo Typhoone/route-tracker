@@ -1,5 +1,6 @@
 import sys
 import tkinter as tk
+from tkinter import ttk
 import requests
 from ttkHyperlinkLabel import HyperlinkLabel
 import myNotebook as nb
@@ -73,6 +74,12 @@ def showLoops():
 	logger.debug("Showing Loops")
 	numToShow = 5
 	topLoops = this.loops[:numToShow]
+	addLabel('#', 0, 0)
+	addLabel('Age', 0, 1, tk.E)
+	addLabel('/', 0, 2)
+	addLabel('Supply', 0, 3)
+	addLabel('Dist (ly)', 0, 4, tk.E)
+	addLabel('Profit', 0, 5, tk.E)
 	rowNum = 1
 	for indx, loop in enumerate(topLoops):
 		p1 = [loop['userSystem']['x'], loop['userSystem']['y'], loop['userSystem']['z']]
@@ -81,52 +88,58 @@ def showLoops():
 		dist1 = round(math.sqrt( ((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)+((p1[2]-p2[2])**2) ), 2)
 		dist2 = round(math.sqrt( ((p1[0]-p3[0])**2)+((p1[1]-p3[1])**2)+((p1[2]-p3[2])**2) ), 2)
 		dist = dist1 if dist1 < dist2 else dist2
-		distStr = str(dist).rjust(8)
+		distStr = str(dist)
 
 		b1 = loop['twoSellListing']['sell_price'] - loop['oneBuyListing']['buy_price']
 		b2 = loop['oneSellListing']['sell_price'] - loop['twoBuyListing']['buy_price']
 		prof = b1 + b2
 
-		profStr = str(prof).rjust(7)
+		profStr = str(prof)
 
 		station1Type = loop['oneStation']['type_id']
 		station2Type = loop['twoStation']['type_id']
 
-		# IF planet
-		if station1Type >= 13 and station1Type <= 17:
-			station1TypeIcon = "🪐".rjust(3)
-		else:
-			station1TypeIcon = " ".rjust(3)
-		if station2Type >= 13 and station2Type <= 17:
-			station2TypeIcon = "🪐".rjust(3)
-		else:
-			station2TypeIcon = " ".rjust(3)
+		sup1 = str(loop['oneBuyListing']['supply'])
+		sup2 = str(loop['twoBuyListing']['supply'])
 
-		sup1 = str(loop['oneBuyListing']['supply']).ljust(7)
-		sup2 = str(loop['twoBuyListing']['supply']).ljust(7)
-
-		loopDist = (str(round(loop['distance'],2)) + " ly").rjust(12)
+		loopDist = str(round(loop['distance'],2))
 
 		listing1TimeAgo = timeAgoFromListing(loop['oneBuyListing'])
 		listing2TimeAgo = timeAgoFromListing(loop['twoBuyListing'])
-		line1Text = f'{indx+1}: {listing1TimeAgo} ⮀  {listing2TimeAgo} {profStr}Cr {distStr}ly'
-		infoLine1 = tk.Label(this.frame, text=line1Text)
-		infoLine1.grid(row = rowNum, column = 0)
+
+		# Top Line
+		addLabel(f'{indx + 1}', rowNum, 0)
+		addLabel(f'{listing1TimeAgo}', rowNum, 1, tk.E)
+		addLabel('⮀', rowNum, 2)
+		addLabel(f'{listing2TimeAgo}', rowNum, 3)
+		addLabel(f'{distStr}', rowNum, 4)
+		addLabel(f'{profStr}Cr', rowNum, 5)
+		rowNum = rowNum + 1
+
+		# Bott line
+		if station1Type >= 13 and station1Type <= 17:
+			sup1 = f'🪐 {sup1}'
+		addLabel(sup1, rowNum, 1, tk.E)
+		addLabel('⮀', rowNum, 2)
+		if station2Type >= 13 and station2Type <= 17:
+			sup2 = f'{sup2} 🪐'
+		addLabel(sup2, rowNum,3)
+		addLabel(f'{loopDist}', rowNum, 4)
 
 		# https://stackoverflow.com/a/22290388
 		action_with_arg = partial(showPage, "showLoop", indx)
 		showLoopBtn = tk.Button(this.frame, text="Select", command=action_with_arg)
-		showLoopBtn.grid(row=rowNum, column=1, sticky=tk.W)
+		showLoopBtn.grid(row=rowNum, column=5, sticky=tk.W)
 
 		rowNum = rowNum + 1
-
-		line2Text = f'{station1TypeIcon}  Sup: {sup1} ⮀ {station2TypeIcon} Sup: {sup2} {loopDist}'
-		infoLine2 = tk.Label(this.frame, text=line2Text)
-		infoLine2.grid(row = rowNum, column = 0)
-
+		ttk.Separator(this.frame, orient=tk.HORIZONTAL).grid(
+                columnspan=10, sticky=tk.EW, row=rowNum
+            )
 		rowNum = rowNum + 1
+
 
 	addFooter(rowNum, "home")
+	
 
 def getCategoryNameFromCommodityId(id):
     for commodity in this.commoditiesDict:
@@ -136,7 +149,6 @@ def getCategoryNameFromCommodityId(id):
 
 def showSingleLoop(indx):
 	this.currentLoopIndx = indx
-
 
 	loop = this.loops[indx]
 	oneSystemName = str(loop['oneSystem']['name'])
@@ -160,45 +172,31 @@ def showSingleLoop(indx):
 	b1 = str(loop['twoSellListing']['sell_price'] - loop['oneBuyListing']['buy_price'])
 	b2 = str(loop['oneSellListing']['sell_price'] - loop['twoBuyListing']['buy_price'])
 
-	# printRoute(oneSystemName, oneStationName, b1, station1Type)
-
-	# IF planet
-	if station1Type >= 13 and station1Type <= 17:
-		station1TypeIcon = "🪐"
-	else:
-		station1TypeIcon = " "
-	if station2Type >= 13 and station2Type <= 17:
-		station2TypeIcon = "🪐"
-	else:
-		station2TypeIcon = " "
-
-	loopOneStationLine1Text = f'{(oneSystemName + ": " + oneStationName).ljust(30)} {(b1 + "Cr").rjust(10)} {station1TypeIcon}'
-	loopOneStationLine2Text = f'{oneCommodityCategory.ljust(20)} {oneCommodityName.ljust(20)} x {sup1.rjust(6)}'
-
-	loopOneStationLine1 = tk.Label(this.frame, text=loopOneStationLine1Text)
-	loopOneStationLine1.grid(row = 1, column = 0)
-
-	loopOneStationLine2 = tk.Label(this.frame, text=loopOneStationLine2Text)
-	loopOneStationLine2.grid(row = 2, column = 0)
-
-
-	loopTwoStationLine1Text = f'{(twoSystemName + ": " + twoStationName).ljust(30)} {(b2 + "Cr").rjust(10)} {station2TypeIcon}'
-	loopTwoStationLine2Text = f'{twoCommodityCategory.ljust(20)} {twoCommodityName.ljust(20)} x {sup2.rjust(6)}'
-
-	loopTwoStationLine1 = tk.Label(this.frame, text=loopTwoStationLine1Text)
-	loopTwoStationLine1.grid(row = 4, column = 0)
-
-	loopTwoStationLine2 = tk.Label(this.frame, text=loopTwoStationLine2Text)
-	loopTwoStationLine2.grid(row = 5, column = 0)
+	printRoute(oneSystemName, oneStationName, b1, station1Type, 1, oneCommodityCategory, oneCommodityName, sup1)
+	printRoute(twoSystemName, twoStationName, b2, station2Type, 3, twoCommodityCategory, twoCommodityName, sup2)
 
 	addFooter(6, "showLoops")
 
-def printRoute(systemName, stationName, cost, stationType):
+def addLabel(text, row, col, alignment=tk.W):
+	labal = tk.Label(this.frame, text=text)
+	labal.grid(row = row, column = col, sticky=alignment)
+
+
+def printRoute(systemName, stationName, cost, stationType, startRow, category, commodity, supply):
+	# Top Row
+	addLabel(f'{systemName + ": "}', startRow, 0)
 	# IF planet
 	if stationType >= 13 and stationType <= 17:
-		stationTypeIcon = "🪐"
-	else:
-		stationTypeIcon = " "
+		addLabel("🪐", startRow, 1)
+	addLabel(stationName, startRow, 2)
+	addLabel(f'{cost}Cr', startRow, 3, tk.E)
+
+	# Bot Row
+	addLabel(category, startRow+1, 0)
+	addLabel(commodity, startRow+1, 2)
+	addLabel(f'x{supply}', startRow+1, 3, tk.E)
+
+
 
 def reloadData():
 	this.fetchString.set("Loading...")
@@ -212,14 +210,12 @@ def addFooter(rowNum, backPage):
 	showLoopBtn.grid(row=rowNum, column=0, sticky=tk.W)
 
 	this.reloadBtn = tk.Button(this.frame, textvariable=this.fetchString, command=reloadData)
-	this.reloadBtn.grid(row=rowNum, column=2, sticky=tk.W)
+	this.reloadBtn.grid(row=rowNum, column=2, sticky=tk.E, columnspan=10)
 
 def showPage(page, extData = "null"):
 	logger.debug("Show Page: " + page)
 	for widget in this.frame.winfo_children():
 			widget.destroy()
-	this.title = tk.Label(this.frame, text="Route Tracker")
-	this.title.grid(row = 0, column = 0)
 	this.currentPage = page
 	if page == 'home':
 		addHomeFrame()
