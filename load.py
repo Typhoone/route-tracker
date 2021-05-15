@@ -12,6 +12,7 @@ import time
 import math
 from functools import partial
 import time
+from theme import theme
 
 this = sys.modules[__name__]  # For holding module globals
 this.version = 'v0.0.1'
@@ -22,6 +23,8 @@ WORKER_WAIT_TIME = 3  # Minimum time for worker to wait between sends
 this.shouldFetchLoop = False
 this.loops = []
 this.commoditiesDict = []
+
+this.fetchString = tk.StringVar()
 
 
 def checkVersion():
@@ -49,7 +52,8 @@ def loadLoops(generate = False):
 		this.currentPage = 'showLoops'
 		this.loadingLable = tk.Label(this.frame, text="Loading...")
 		this.loadingLable.grid(row = 1, column = 0)
-		this.shouldFetchLoop = True
+		theme.update(this.frame)
+		reloadData()
 
 def timeAgoFromListing(listing):
 	now = round(time.time())
@@ -111,7 +115,7 @@ def showLoops():
 
 		# https://stackoverflow.com/a/22290388
 		action_with_arg = partial(showPage, "showLoop", indx)
-		showLoopBtn = tk.Button(frame, text="Select", command=action_with_arg)
+		showLoopBtn = tk.Button(this.frame, text="Select", command=action_with_arg)
 		showLoopBtn.grid(row=rowNum, column=1, sticky=tk.W)
 
 		rowNum = rowNum + 1
@@ -122,6 +126,8 @@ def showLoops():
 
 		rowNum = rowNum + 1
 
+	addFooter(rowNum, "home")
+
 def getCategoryNameFromCommodityId(id):
     for commodity in this.commoditiesDict:
         if commodity['id'] == id:
@@ -131,14 +137,12 @@ def getCategoryNameFromCommodityId(id):
 def showSingleLoop(indx):
 	this.currentLoopIndx = indx
 
-	logger.debug("test")
 
 	loop = this.loops[indx]
 	oneSystemName = str(loop['oneSystem']['name'])
 	twoSystemName = str(loop['twoSystem']['name'])
 	oneStationName = str(loop['oneStation']['name'])
 	twoStationName = str(loop['twoStation']['name'])
-	logger.debug("test")
 
 	oneCommodityName = str(loop['oneCommodity']['name'])
 	twoCommodityName = str(loop['twoCommodity']['name'])
@@ -146,19 +150,17 @@ def showSingleLoop(indx):
 	twoCommodityId = loop['twoCommodity']['id']
 	oneCommodityCategory = getCategoryNameFromCommodityId(oneCommodityId)
 	twoCommodityCategory = getCategoryNameFromCommodityId(twoCommodityId)
-	logger.debug("test")
 
 	sup1 = str(loop['oneBuyListing']['supply'])
 	sup2 = str(loop['twoBuyListing']['supply'])
-	logger.debug("test")
 
 	station1Type = loop['oneStation']['type_id']
 	station2Type = loop['twoStation']['type_id']
-	logger.debug("test")
 
 	b1 = str(loop['twoSellListing']['sell_price'] - loop['oneBuyListing']['buy_price'])
 	b2 = str(loop['oneSellListing']['sell_price'] - loop['twoBuyListing']['buy_price'])
-	logger.debug("test")
+
+	# printRoute(oneSystemName, oneStationName, b1, station1Type)
 
 	# IF planet
 	if station1Type >= 13 and station1Type <= 17:
@@ -169,7 +171,6 @@ def showSingleLoop(indx):
 		station2TypeIcon = "🪐"
 	else:
 		station2TypeIcon = " "
-	logger.debug("test")
 
 	loopOneStationLine1Text = f'{(oneSystemName + ": " + oneStationName).ljust(30)} {(b1 + "Cr").rjust(10)} {station1TypeIcon}'
 	loopOneStationLine2Text = f'{oneCommodityCategory.ljust(20)} {oneCommodityName.ljust(20)} x {sup1.rjust(6)}'
@@ -190,6 +191,29 @@ def showSingleLoop(indx):
 	loopTwoStationLine2 = tk.Label(this.frame, text=loopTwoStationLine2Text)
 	loopTwoStationLine2.grid(row = 5, column = 0)
 
+	addFooter(6, "showLoops")
+
+def printRoute(systemName, stationName, cost, stationType):
+	# IF planet
+	if stationType >= 13 and stationType <= 17:
+		stationTypeIcon = "🪐"
+	else:
+		stationTypeIcon = " "
+
+def reloadData():
+	this.fetchString.set("Loading...")
+	this.shouldFetchLoop = True
+	this.reloadBtn["state"] = "disabled"
+
+def addFooter(rowNum, backPage):
+	this.fetchString.set("Fetch Update")
+	action_with_arg = partial(showPage, backPage)
+	showLoopBtn = tk.Button(this.frame, text="Back", command=action_with_arg)
+	showLoopBtn.grid(row=rowNum, column=0, sticky=tk.W)
+
+	this.reloadBtn = tk.Button(this.frame, textvariable=this.fetchString, command=reloadData)
+	this.reloadBtn.grid(row=rowNum, column=2, sticky=tk.W)
+
 def showPage(page, extData = "null"):
 	logger.debug("Show Page: " + page)
 	for widget in this.frame.winfo_children():
@@ -202,6 +226,7 @@ def showPage(page, extData = "null"):
 	elif page == 'loadLoops':
 		loadLoops(True)
 	elif page == "showLoops":
+		logger.debug("Showing Loops page")
 		showLoops()
 	elif page == "showLoop":
 		logger.debug("Showing loop: " + str(extData))
@@ -211,6 +236,7 @@ def showPage(page, extData = "null"):
 			showSingleLoop(extData)
 	else:
 		logger.error('Unknown Page: ' + page)
+	theme.update(this.frame)
 
 def plugin_app(parent):
 	# Adds to the main page UI
