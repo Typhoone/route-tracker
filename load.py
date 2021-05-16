@@ -65,11 +65,22 @@ def plugin_start3(plugin_dir):
 	return "Route Tracker"
 
 def journal_entry(cmdr, is_beta, system, station, entry, state):
-	if system != None and entry['event'] == 'Docked':
-		logger.debug("Journal Entry")
-		logger.debug(system)
-		logger.debug(entry)
+
+	# logger.debug(entry)
+
+	if entry['event'] == 'Docked':
+		this.currentStation = entry['StationName']
+		this.currentSystem = entry['StarSystem']
+		locChanged()
+		reloadData()
+	elif entry['event'] == 'FSDJump':
 		this.currentSystem = system
+		locChanged()
+	elif entry['event'] == 'StartUp':
+		this.currentStation = entry['StationName']
+		this.currentSystem = entry['StarSystem']
+		locChanged()
+
 
 
 def plugin_app(parent):
@@ -104,6 +115,10 @@ def plugin_prefs(parent, cmdr, is_beta):
 
 	return frame
 
+def locChanged():
+	config.set("Route-Tracker_CurrentSystem", this.currentSystem)
+	config.set("Route-Tracker_CurrentStation", this.currentStation)
+
 def prefs_changed(cmdr, is_beta):
 	logger.debug("Prefs Changed")
 	config.set("Route-Tracker_includePlanetary", this.includePlanetary.get())
@@ -124,7 +139,9 @@ def loadConfigVars():
 	this.minDemandInt = tk.IntVar(value=config.get_int("Route-Tracker_minDemand", default = 0))
 	this.minProfitInt = tk.IntVar(value=config.get_int("Route-Tracker_minProfit", default = 20000))
 
-	this.currentSystem = "Kunti"
+	this.currentSystem = config.get_str("Route-Tracker_CurrentSystem", default = 'Sol')
+
+	this.currentStation = config.get_str("Route-Tracker_CurrentStation", default = "Abraham Lincoln")
 
 def getCategoryNameFromCommodityId(id):
     for commodity in this.commoditiesDict:
@@ -174,7 +191,7 @@ def showPage(page, extData = "null"):
 		showLoops()
 	elif page == "showLoop":
 		if extData == "null":
-			showSingleLoop(this.currentLoopIndx)
+			showSingleLoop(findLoopIndexByID(this.currentLoopID))
 		else:
 			showSingleLoop(extData)
 	else:
@@ -303,37 +320,59 @@ def showLoops():
 
 	addFooter(rowNum, "home")
 
+def findLoopIndexByID(loopID):
+	for indx, loop in enumerate(this.loops):
+		if loop['tradeLoopId'] == loopID:
+			return indx
+	return None
+
 def showSingleLoop(indx):
-	this.currentLoopIndx = indx
+	if indx == None:
+		addLabel("Loop data Missing!", 0, 0, this.frame)
+	else:
+		this.currentLoopIndx = indx
+		loop = this.loops[indx]
 
-	loop = this.loops[indx]
-	oneSystemName = str(loop['oneSystem']['name'])
-	twoSystemName = str(loop['twoSystem']['name'])
-	oneStationName = str(loop['oneStation']['name'])
-	twoStationName = str(loop['twoStation']['name'])
+		this.currentLoopID = loop['tradeLoopId']
 
-	oneCommodityName = str(loop['oneCommodity']['name'])
-	twoCommodityName = str(loop['twoCommodity']['name'])
-	oneCommodityId = loop['oneCommodity']['id']
-	twoCommodityId = loop['twoCommodity']['id']
-	oneCommodityCategory = getCategoryNameFromCommodityId(oneCommodityId)
-	twoCommodityCategory = getCategoryNameFromCommodityId(twoCommodityId)
+		oneSystemName = str(loop['oneSystem']['name'])
+		twoSystemName = str(loop['twoSystem']['name'])
+		oneStationName = str(loop['oneStation']['name'])
+		twoStationName = str(loop['twoStation']['name'])
 
-	sup1 = str(loop['oneBuyListing']['supply'])
-	sup2 = str(loop['twoBuyListing']['supply'])
+		oneCommodityName = str(loop['oneCommodity']['name'])
+		twoCommodityName = str(loop['twoCommodity']['name'])
+		oneCommodityId = loop['oneCommodity']['id']
+		twoCommodityId = loop['twoCommodity']['id']
+		oneCommodityCategory = getCategoryNameFromCommodityId(oneCommodityId)
+		twoCommodityCategory = getCategoryNameFromCommodityId(twoCommodityId)
 
-	station1Type = loop['oneStation']['type_id']
-	station2Type = loop['twoStation']['type_id']
+		sup1 = str(loop['oneBuyListing']['supply'])
+		sup2 = str(loop['twoBuyListing']['supply'])
 
-	b1 = str(loop['twoSellListing']['sell_price'] - loop['oneBuyListing']['buy_price'])
-	b2 = str(loop['oneSellListing']['sell_price'] - loop['twoBuyListing']['buy_price'])
+		station1Type = loop['oneStation']['type_id']
+		station2Type = loop['twoStation']['type_id']
 
-	printRoute(oneSystemName, oneStationName, b1, station1Type, 1, oneCommodityCategory, oneCommodityName, sup1)
-	addLabel("ᐁ", 3, 2, this.frame)
-	# addLabel("ᐃ", 3, 3, this.frame)
-	printRoute(twoSystemName, twoStationName, b2, station2Type, 4, twoCommodityCategory, twoCommodityName, sup2)
+		b1 = str(loop['twoSellListing']['sell_price'] - loop['oneBuyListing']['buy_price'])
+		b2 = str(loop['oneSellListing']['sell_price'] - loop['twoBuyListing']['buy_price'])
+		printRoute(oneSystemName, oneStationName, b1, station1Type, 1, oneCommodityCategory, oneCommodityName, sup1)
+		
+		logger.debug(twoStationName)
+		logger.debug(this.currentStation)
 
-	addFooter(6, "showLoops")
+		if this.currentStation == twoStationName:
+			addLabel("ᐃ", 3, 2, this.frame)
+		else:
+			addLabel("ᐁ", 3, 2, this.frame)
+		
+		# addLabel("ᐃ", 3, 3, this.frame)
+		printRoute(twoSystemName, twoStationName, b2, station2Type, 4, twoCommodityCategory, twoCommodityName, sup2)
+
+		HyperlinkLabel(
+			this.frame, text=f'https://eddb.io/trade/loop/{this.currentLoopID}', url=f'https://eddb.io/trade/loop/{this.currentLoopID}', underline=True
+		).grid(row = 6, columnspan=10, sticky=tk.W)
+
+	addFooter(7, "showLoops")
 
 def printRoute(systemName, stationName, cost, stationType, startRow, category, commodity, supply):
 	# Top Row
@@ -399,7 +438,7 @@ def loopFetchThread():
 
 
 			this.shouldFetchLoop = False
-			logger.info("Fetching Loop Data")
+			logger.info(f'Fetching Loop Data - {systemId}: {this.currentSystem}')
 			maxHopDist = 23
 			minSup = round(this.minSupplyInt.get() * 640)
 			includePlanet = True if this.includePlanetary.get() == 1 else False
